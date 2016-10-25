@@ -11,7 +11,11 @@ import {
 } from 'react-native';
 const { width, height } = Dimensions.get('window')
 var TWEEN = require('tween.js');
-
+requestAnimationFrame(animate);
+function animate(time) {
+    requestAnimationFrame(animate);
+    TWEEN.update(time);
+}
 export class App extends Component {
   componentWillMount() {
     const me=this;
@@ -22,6 +26,9 @@ export class App extends Component {
       onMoveShouldSetPanResponder: (evt, gestureState) => {
         const dx=Math.abs(gestureState.dx);
         // console.log('onMoveShouldSetPanResponder',dx);
+        if(dx>20){
+          me.panStartTime=Date.now();//开始移动时间
+        }
         return dx>20;//发生大于20的水平偏移时才作为响应者
       },
       onMoveShouldSetPanResponderCapture: (evt, gestureState) => false,
@@ -113,25 +120,35 @@ function setContainerX(state,dx,msg) {
 }
 
 function panEnd(state,dx,msg,me) {
-  console.log("panEnd")
-  if(dx<-20){
-      state.contX=dx;
-      state.llist=state.mlist;
-      state.mlist=state.rlist;
-      state.rlist=state.mlist+1;
-      me.setState(state);
-  }else if(dx>20){
-      state.contX=-2*width+dx;
-      state.rlist=state.mlist;
-      state.mlist=state.llist;
-      state.llist=state.mlist-1;
-      me.setState(state);
-  }else{
+  console.log("panEnd");
+  if(Math.abs(dx)<20){ //不移动
       state.contX=-width;
       me.setState(state);
+  }else{
+      const panEndTime=Date.now();
+      const v=(width-Math.abs(dx))/(panEndTime-me.panStartTime);
+      if(dx<-20){//左移
+          state.contX=dx;
+          state.llist=state.mlist;
+          state.mlist=state.rlist;
+          state.rlist=state.mlist+1;
+          tween(me,state,v).start();
+      }else{//右移
+          state.contX=-2*width+dx;
+          state.rlist=state.mlist;
+          state.mlist=state.llist;
+          state.llist=state.mlist-1;
+          tween(me,state,v).start();  
+      }
   }
   return null;
 }
+
+const tween = (me,state,v)=>new TWEEN.Tween(state).easing(TWEEN.Easing.Quadratic.In)
+      .to({ contX: -width}, Math.abs(state.contX-(-width))/v)
+      .onUpdate(function() {
+          me.setState(state);
+      });
 
 var containerStyle={
     position:"relative",
@@ -142,19 +159,19 @@ var containerStyle={
 const styles = StyleSheet.create({
   leftlist:{
     position:"absolute",
-    backgroundColor: 'lightpink',
+    // backgroundColor: 'lightpink',
     width:width,
     height:height
   },
   middlelist:{
     position:"absolute",
-    backgroundColor: 'lightgreen',
+    // backgroundColor: 'lightgreen',
     width:width,
     height:height
   },
   rightlist:{
     position:"absolute",
-    backgroundColor: 'lightblue',
+    // backgroundColor: 'lightblue',
     width:width,
     height:height
   },
