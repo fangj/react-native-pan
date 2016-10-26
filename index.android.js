@@ -27,8 +27,9 @@ export class App extends Component {
         const dx=Math.abs(gestureState.dx);
         // console.log('onMoveShouldSetPanResponder',dx);
         if(dx>20){
-          me.panStartTime=Date.now();//开始移动时间
+          me.accept("panStart",dx);
         }
+
         return dx>20;//发生大于20的水平偏移时才作为响应者
       },
       onMoveShouldSetPanResponderCapture: (evt, gestureState) => false,
@@ -71,26 +72,45 @@ export class App extends Component {
   constructor(props){
     super(props);
     this.state={contX:-width,leftX:0,middleX:width,rightX:2*width,
-      llist:0,mlist:1,rlist:2}
+      llist:0,mlist:1,rlist:2,
+      mlist_y:0,rlist_y:0}
     this.accept=this.accept.bind(this);
   }
 
   render() {
     console.log(styles)
-    const {contX,leftX,middleX,rightX,llist,mlist,rlist}=this.state;
+    const {contX,leftX,middleX,rightX,llist,mlist,rlist,mlist_y,rlist_y}=this.state;
     return (
       <View style={[containerStyle,{left:contX}]}>
         <View style={[styles.leftlist,{left:leftX}]} >
-          <View style={styles.card}>
+          <View style={styles.card} >
+            <Text style={styles.text}>{llist}</Text>
+          </View>
+          <View style={styles.card} >
+            <Text style={styles.text}>{llist}</Text>
+          </View>
+          <View style={styles.card} >
             <Text style={styles.text}>{llist}</Text>
           </View>
         </View>
-        <View style={[styles.middlelist,{left:middleX}]} {...this._panResponder.panHandlers}>
+        <View style={[styles.middlelist,{left:middleX,top:mlist_y}]} >
+          <View style={styles.card}  >
+            <Text style={styles.text}>{mlist}</Text>
+          </View>
+          <View style={styles.card}  onLayout={e=>this.accept("measureCard",{cardID:2,layout:e.nativeEvent.layout})} {...this._panResponder.panHandlers}>
+            <Text style={styles.text}>{mlist}</Text>
+          </View>
           <View style={styles.card}  >
             <Text style={styles.text}>{mlist}</Text>
           </View>
         </View>
-        <View style={[styles.rightlist,{left:rightX}]} >
+        <View style={[styles.rightlist,{left:rightX,top:rlist_y}]} >
+          <View style={styles.card}>
+            <Text style={styles.text}>{rlist}</Text>
+          </View>
+          <View style={styles.card}>
+            <Text style={styles.text}>{rlist}</Text>
+          </View>
           <View style={styles.card}>
             <Text style={styles.text}>{rlist}</Text>
           </View>
@@ -99,11 +119,14 @@ export class App extends Component {
     );
   }
 
+
   accept(msg,data){
     var state=this.state||{}; //获取当前的state值
     const fns={
       "contX":setContainerX, //响应msg的函数列表
-      "panEnd":panEnd
+      "panEnd":panEnd,
+      "panStart":panStart,
+      "measureCard":measureCard
     }
     if(fns[msg]){ //如果有响应函数，用响应函数处理state后刷新组件
       state=fns[msg](state,data,msg,this);
@@ -113,10 +136,23 @@ export class App extends Component {
     }
   }
 }
+function measureCard(state,layout,msg,me) {
+  const cardID=layout.cardID;
+  const {x, y, width, height}=layout.layout;
+  me.layouts=me.layouts||{};
+  me.layouts[cardID]=layout.layout;
+  return null;
+}
 
 function setContainerX(state,dx,msg) {
   state.contX=-width+dx;
   return state;
+}
+
+function panStart(state,dx,msg,me) {
+  me.panStartTime=Date.now();//开始移动时间
+  const layout=me.layouts[2];
+  state.rlist_y=layout.y;
 }
 
 function panEnd(state,dx,msg,me) {
@@ -131,21 +167,31 @@ function panEnd(state,dx,msg,me) {
           state.contX=dx;
           state.llist=state.mlist;
           state.mlist=state.rlist;
+          state.mlist_y=state.rlist_y;//拷贝右侧位置
+          state.rlist_y=0;//恢复
           state.rlist=state.mlist+1;
-          tween(me,state,v).start();
+          tweenH(me,state,v).chain(tweenUp(me,state)).start(); //左移后还需上移
       }else{//右移
           state.contX=-2*width+dx;
           state.rlist=state.mlist;
           state.mlist=state.llist;
           state.llist=state.mlist-1;
-          tween(me,state,v).start();  
+          tweenH(me,state,v).start();  
       }
   }
   return null;
 }
 
-const tween = (me,state,v)=>new TWEEN.Tween(state).easing(TWEEN.Easing.Quadratic.In)
+
+//横向移动动画
+const tweenH = (me,state,v)=>new TWEEN.Tween(state).easing(TWEEN.Easing.Quadratic.In)
       .to({ contX: -width}, Math.abs(state.contX-(-width))/v)
+      .onUpdate(function() {
+          me.setState(state);
+      });
+
+const tweenUp=(me,state)=>new TWEEN.Tween(state)
+      .to({ mlist_y: 0}, 300)
       .onUpdate(function() {
           me.setState(state);
       });
@@ -161,23 +207,32 @@ const styles = StyleSheet.create({
     position:"absolute",
     // backgroundColor: 'lightpink',
     width:width,
-    height:height
+    height:height,
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center'
   },
   middlelist:{
     position:"absolute",
     // backgroundColor: 'lightgreen',
     width:width,
-    height:height
+    height:height,
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center'
   },
   rightlist:{
     position:"absolute",
     // backgroundColor: 'lightblue',
     width:width,
-    height:height
+    height:height,
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center'
   },
   card:{
     width:width,
-    height:height,
+    height:height/3,
     borderWidth: 2,
     borderColor: 'gray',
     borderStyle:'dashed',
