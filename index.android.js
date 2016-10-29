@@ -1,5 +1,5 @@
 import React, { Component } from 'react';
-
+import Markdown from 'react-native-simple-markdown';
 import {
   StyleSheet,
   Text,
@@ -7,7 +7,9 @@ import {
   Image,
   PanResponder,
   Dimensions,
-  ToastAndroid
+  ToastAndroid,
+  TextInput,
+  ScrollView
 } from 'react-native';
 const { width, height } = Dimensions.get('window')
 var TWEEN = require('tween.js');
@@ -16,6 +18,21 @@ function animate(time) {
     requestAnimationFrame(animate);
     TWEEN.update(time);
 }
+
+
+class UselessTextInput extends Component {
+  render() {
+    return (
+      <TextInput
+        {...this.props} // Inherit any props passed to it; e.g., multiline, numberOfLines below
+        editable = {true}
+        maxLength = {40}
+        style={styles.card}
+      />
+    );
+  }
+}
+
 export class App extends Component {
   componentWillMount() {
     const me=this;
@@ -93,7 +110,8 @@ export class App extends Component {
             <Text style={styles.text}>{llist}</Text>
           </View>
         </View>
-        <View style={[styles.middlelist,{left:middleX,top:mlist_y}]} >
+        <ScrollView style={[styles.middlelist,{left:middleX,top:mlist_y}]}
+        onScroll={event=>this.accept("recordScrollY",event.nativeEvent.contentOffset.y)} >
           <View style={styles.card}  >
             <Text style={styles.text}>{mlist}</Text>
           </View>
@@ -103,7 +121,7 @@ export class App extends Component {
           <View style={styles.card}  >
             <Text style={styles.text}>{mlist}</Text>
           </View>
-        </View>
+        </ScrollView>
         <View style={[styles.rightlist,{left:rightX,top:rlist_y}]} >
           <View style={styles.card}>
             <Text style={styles.text}>{rlist}</Text>
@@ -126,7 +144,8 @@ export class App extends Component {
       "contX":setContainerX, //响应msg的函数列表
       "panEnd":panEnd,
       "panStart":panStart,
-      "measureCard":measureCard
+      "measureCard":measureCard,
+      "recordScrollY":recordScrollY //记录滚动位置
     }
     if(fns[msg]){ //如果有响应函数，用响应函数处理state后刷新组件
       state=fns[msg](state,data,msg,this);
@@ -135,6 +154,9 @@ export class App extends Component {
       }
     }
   }
+}
+function recordScrollY(state,scrollY,msg,me) {
+  me.scrollY=scrollY;
 }
 function measureCard(state,layout,msg,me) {
   const cardID=layout.cardID;
@@ -151,8 +173,12 @@ function setContainerX(state,dx,msg) {
 
 function panStart(state,dx,msg,me) {
   me.panStartTime=Date.now();//开始移动时间
-  const layout=me.layouts[2];
-  state.rlist_y=layout.y;
+  const layout=me.layouts[2];//取得2号卡片的位置，假设2号卡片是拖动的卡片
+  const scrollY=me.scrollY||0;
+  const posY=layout.y-scrollY;//减去滚动的相对位置，得到相对于屏幕的距离
+  state.rlist_y=Math.max(posY,0);
+  // state.rlist_y=layout.y;
+  return state;
 }
 
 function panEnd(state,dx,msg,me) {
@@ -208,31 +234,31 @@ const styles = StyleSheet.create({
     // backgroundColor: 'lightpink',
     width:width,
     height:height,
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center'
+    // flex: 1,
+    // justifyContent: 'center',
+    // alignItems: 'center'
   },
   middlelist:{
     position:"absolute",
     // backgroundColor: 'lightgreen',
     width:width,
     height:height,
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center'
+    // flex: 1,
+    // justifyContent: 'center',
+    // alignItems: 'center'
   },
   rightlist:{
     position:"absolute",
     // backgroundColor: 'lightblue',
     width:width,
     height:height,
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center'
+    // flex: 1,
+    // justifyContent: 'center',
+    // alignItems: 'center'
   },
   card:{
     width:width,
-    height:height/3,
+    height:height*2/3,
     borderWidth: 2,
     borderColor: 'gray',
     borderStyle:'dashed',
