@@ -110,7 +110,8 @@ export class App extends Component {
             <Text style={styles.text}>{llist}</Text>
           </View>
         </View>
-        <ScrollView style={[styles.middlelist,{left:middleX,top:mlist_y}]}
+        <ScrollView  ref={(scrollView) => { this._scrollView = scrollView; }}
+         style={[styles.middlelist,{left:middleX,top:mlist_y}]}
         onScroll={event=>this.accept("recordScrollY",event.nativeEvent.contentOffset.y)} >
           <View style={styles.card}  >
             <Text style={styles.text}>{mlist}</Text>
@@ -178,7 +179,6 @@ function panStart(state,dx,msg,me) {
   const posY=layout.y-scrollY;//减去滚动的相对位置，得到相对于屏幕的距离
   state.rlist_y=Math.max(posY,0);
   // state.rlist_y=layout.y;
-  return state;
 }
 
 function panEnd(state,dx,msg,me) {
@@ -196,6 +196,7 @@ function panEnd(state,dx,msg,me) {
           state.mlist_y=state.rlist_y;//拷贝右侧位置
           state.rlist_y=0;//恢复
           state.rlist=state.mlist+1;
+          me._scrollView.scrollTo({x: 0, y: 0, animated: false});
           tweenH(me,state,v).chain(tweenUp(me,state)).start(); //左移后还需上移
       }else{//右移
           state.contX=-2*width+dx;
